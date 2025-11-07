@@ -88,11 +88,13 @@ At this stage, the app just logs what it *would* do — no actual Asana API call
 
 ## What's next
 
+
 - Wire up the Asana API (create, update, and complete tasks)
 - Build a proper mapping system between PRs and Asana task IDs
 - Add error logging and retry logic
 - Deploy this thing to a lightweight cloud instance or container
 
+<<<<<<< HEAD
 ## 🧩 Working Screenshots & Example Logs
 
 ### 🟢 Opened → Create or Ensure Task
@@ -169,3 +171,7 @@ Pushes to the branch don’t change task state; we simply log them.
 
 ### ⚫ Non-PR Events → Ignored
 Any non-`pull_request` webhook events (like ping or issues) are acknowledged and ignored gracefully.
+=======
+## Working Screenshots
+![alt text](public/image.png)
+>>>>>>> 763ae75a6387ea6cd6b0a4903c649eb3d3fb18f5
