@@ -93,5 +93,79 @@ At this stage, the app just logs what it *would* do — no actual Asana API call
 - Add error logging and retry logic
 - Deploy this thing to a lightweight cloud instance or container
 
-## Working Screenshots
+## 🧩 Working Screenshots & Example Logs
+
+### 🟢 Opened → Create or Ensure Task
+When a PR is opened, a new task would be created (or ensured) and assigned to the PR author.
+
+[GH→Asana] ... "action": "opened" ... "plan": {
+"kind": "ensure_task",
+"assignTo": "Akkikens"
+}
 ![alt text](public/image.png)
+
+
+
+### 🟣 Assigned → Update Task Assignee
+When someone is assigned to a PR, the Asana task would be updated to match.
+
+[GH→Asana] ... "action": "assigned" ... "plan": {
+"kind": "assign",
+"assignTo": "Akkikens",
+"source": "assigned"
+}
+
+![alt text](public/assigned.png)
+
+
+### 🟡 Unassigned → Reassign to PR Author
+When a PR loses its assignee, we fall back to the PR author.
+[GH→Asana] ... "action": "unassigned" ... "plan": {
+"kind": "assign",
+"assignTo": "<PR_AUTHOR_LOGIN>",
+"source": "unassigned->author"
+}
+
+
+### 🔵 Closed Without Merge → Mark Task Complete
+Closed PRs that weren’t merged still complete the task.
+[GH→Asana] ... "action": "closed" ... "plan": {
+"kind": "complete",
+"merged": false
+
+![alt text](public/closedout.png)
+
+
+### 🟢 Closed With Merge → Mark Task Complete
+Merged PRs are also marked complete (same behavior, merged flag true).
+[GH→Asana] ... "action": "closed" ... "plan": {
+"kind": "complete",
+"merged": true
+}
+}
+![alt text](public/closepr.png)
+
+
+### 🟠 Reopened → Reopen Task
+If a PR is reopened, the corresponding task would be reopened.
+[GH→Asana] ... "action": "reopened" ... "plan": {
+"kind": "reopen"
+}
+
+![alt text](public/reopened.png)
+
+
+
+### ⚪ Synchronize → No-Op (New Commits Only)
+Pushes to the branch don’t change task state; we simply log them.
+[GH→Asana] ... "action": "synchronize" ... "plan": {
+"kind": "noop",
+"reason": "new commits pushed; no asana change"
+}
+
+![alt text](public/newCommit.png)
+
+
+
+### ⚫ Non-PR Events → Ignored
+Any non-`pull_request` webhook events (like ping or issues) are acknowledged and ignored gracefully.
