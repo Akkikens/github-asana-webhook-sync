@@ -85,17 +85,41 @@ def plan_intended_action(payload: Dict[str, Any]) -> Dict[str, Any]:
 @app.post("/webhooks/github")
 async def github_webhook(
     request: Request,
-    x_hub_signature_256: Optional[str] = Header(None)
+    x_hub_signature_256: Optional[str] = Header(None),
+    x_github_event: Optional[str] = Header(None),
+    x_github_delivery: Optional[str] = Header(None),
 ):
-    """webhook endpoint with signature verification"""
+    """main webhook endpoint - GitHub hits this when stuff happens"""
+    
     if not SECRET:
         raise HTTPException(status_code=500, detail="Server misconfigured: missing GITHUB_WEBHOOK_SECRET")
 
     raw = await request.body()
-    
+
+    # check signature first - don't trust random internet traffic
     if not verify_sig(raw, x_hub_signature_256):
         raise HTTPException(status_code=401, detail="Invalid signature")
-    
-    payload = await request.json()
-    print("Verified webhook:", payload.get("action"))
-    return JSONResponse({"ok": True})
+
+    try:
+        payload = json.loads(raw.decode("utf-8"))
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid JSON payload")
+
+    # only care about PR events, ignore everything else
+    if x_github_event != "pull_request":
+        return JSONResponse({"ok": True, "ignored": x_github_event})
+
+    plan = plan_intended_action(payload)
+
+    # log everything so we can see what's happening
+    log = {
+        "delivery": x_github_delivery,
+        "event": x_github_event,
+        "action": payload.get("action"),
+        "repo": payload.get("repository", {}).get("full_name"),
+        "pr": payload.get("pull_request", {}).get("number"),
+        "plan": plan,
+    }
+    print("[GH→Asana] ", json.dumps(log))
+
+    return JSONResponse({"ok": True, "plan": plan})
