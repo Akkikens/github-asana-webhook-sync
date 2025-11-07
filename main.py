@@ -7,6 +7,7 @@ from dotenv import load_dotenv
 load_dotenv()
 app = FastAPI()
 
+# this is the secret we share with GitHub to verify webhooks
 SECRET = os.getenv("GITHUB_WEBHOOK_SECRET", "")
 if not SECRET:
     print("⚠️  GITHUB_WEBHOOK_SECRET not set. Set it in .env or environment.")
@@ -56,6 +57,7 @@ def plan_intended_action(payload: Dict[str, Any]) -> Dict[str, Any]:
     default_assignee = author
 
     if action == "opened":
+        # new PR -> create task, assign to whoever's on it (or author)
         return {
             "kind": "ensure_task",
             "externalId": ext,
@@ -64,20 +66,25 @@ def plan_intended_action(payload: Dict[str, Any]) -> Dict[str, Any]:
         }
 
     if action in ("assigned", "edited"):
+        # someone got assigned or PR details changed
+        # TODO: maybe diff the old vs new assignee on 'edited'?
         if assignee:
             return {"kind": "assign", "externalId": ext, "assignTo": assignee, "source": action}
         return {"kind": "assign", "externalId": ext, "assignTo": default_assignee, "source": action}
 
     if action == "unassigned":
+        # nobody assigned anymore -> put it back on the author
         return {"kind": "assign", "externalId": ext, "assignTo": default_assignee, "source": "unassigned->author"}
 
     if action == "closed":
+        # PR closed -> mark task done (doesn't matter if merged or not)
         return {"kind": "complete", "externalId": ext, "merged": merged}
 
     if action == "reopened":
         return {"kind": "reopen", "externalId": ext}
 
     if action == "synchronize":
+        # just new commits, no action needed
         return {"kind": "noop", "reason": "new commits pushed; no asana change"}
 
     return {"kind": "noop", "reason": f"unhandled action {action}"}
